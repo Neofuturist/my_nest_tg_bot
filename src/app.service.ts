@@ -4,8 +4,6 @@ import { Message, Update as UpdateT } from 'telegraf/types';
 import { Context } from 'telegraf';
 import { YaDisk } from 'ya-disk-rest-api';
 import * as process from 'process';
-import { optionalRequire } from '@nestjs/core/helpers/optional-require';
-import { response } from 'express';
 import * as fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const axios = require('axios');
@@ -90,6 +88,12 @@ export class AppService {
                     file: './downloads/' + ctx.message[type].file_name,
                   });
                   console.log('ok upload');
+                  await fs.unlink(
+                    './downloads/' + ctx.message[type].file_name,
+                    (callback) => {
+                      console.log(callback ? callback : 'ok delete');
+                    },
+                  );
                 } catch (error) {
                   console.log('error upload');
                 }
