@@ -13,7 +13,7 @@ type FileContext =
   | Context<UpdateT.MessageUpdate<Message.DocumentMessage>>
   | Context<UpdateT.MessageUpdate<Message.PhotoMessage>>;
 
-@Update()
+@Update() //test commit
 @Injectable()
 export class AppService {
   @Start()
