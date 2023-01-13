@@ -13,7 +13,7 @@ type FileContext =
   | Context<UpdateT.MessageUpdate<Message.DocumentMessage>>
   | Context<UpdateT.MessageUpdate<Message.PhotoMessage>>;
 
-@Update() //test commit
+@Update()
 @Injectable()
 export class AppService {
   @Start()
@@ -30,23 +30,7 @@ export class AppService {
   }
   @On('photo')
   async onPhoto(ctx: any) {
-    console.log('photo');
-    console.log(ctx.message.photo[1].file_unique_id);
-    console.log(ctx.message);
-    ctx.telegram.getFileLink(ctx.message.photo[0].file_id).then((url) => {
-      axios({ url, responseType: 'stream' }).then((response) => {
-        return new Promise(() => {
-          response.data
-            .pipe(
-              fs.createWriteStream(
-                './downloads/' + ctx.message.photo.file_name,
-              ),
-            )
-            .on('finish', () => console.log('ok'))
-            .on('error', (e) => console.log(e));
-        });
-      });
-    });
+    await this.uploadPic(ctx);
   }
   @On('video')
   @On('document')
@@ -60,14 +44,51 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
+  async uploadPic(ctx: any) {
+    try {
+      const photo_name =
+        ctx.message.photo[ctx.message.photo.length - 1].file_unique_id + '.jpg';
+      const disk = new YaDisk(process.env.DISK_TOKEN);
+      await ctx.telegram
+        .getFileLink(ctx.message.photo[ctx.message.photo.length - 1].file_id)
+        .then((url) => {
+          axios({ url, responseType: 'stream' }).then((response) => {
+            return new Promise(() => {
+              response.data
+                .pipe(fs.createWriteStream('./downloads/' + photo_name))
+                .on('finish', async () => {
+                  const filestream = await fs.createReadStream(
+                    './downloads/' + photo_name,
+                  );
+                  try {
+                    await disk.upload({
+                      path: 'telegram_bot/' + photo_name,
+                      file: filestream,
+                      overwrite: true,
+                    });
+                    await fs.unlink('./downloads/' + photo_name, (callback) => {
+                      console.log(callback ? callback : 'ok delete');
+                    });
+                  } catch (error) {
+                    console.log('error upload');
+                  }
+                })
+                .on('error', () => {
+                  console.log('error download');
+                });
+            });
+          });
+        });
+    } catch (e) {
+      console.log(e);
+    }
+  }
   async uploadDocument(ctx: any) {
     try {
       const type = ctx.message.video
         ? 'video'
         : ctx.message.document
         ? 'document'
-        : ctx.message.photo
-        ? 'photo'
         : '';
       console.log(ctx.message[type]);
       const disk = new YaDisk(process.env.DISK_TOKEN);
@@ -96,6 +117,12 @@ export class AppService {
                   );
                 } catch (error) {
                   console.log('error upload');
+                  await fs.unlink(
+                    './downloads/' + ctx.message[type].file_name,
+                    (callback) => {
+                      console.log(callback ? callback : 'ok delete');
+                    },
+                  );
                 }
               })
               .on('error', () => {

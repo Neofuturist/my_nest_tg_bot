@@ -25,11 +25,13 @@
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
     "axios": "^1.2.2",
+    "https": "^1.0.0",
     "nestjs-telegraf": "^2.6.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
     "telegraf": "^4.11.2",
-    "ya-disk-rest-api": "^1.1.2"
+    "ya-disk-rest-api": "^1.1.2",
+    "yandex-disk": "^0.0.8"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
