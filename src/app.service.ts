@@ -65,9 +65,11 @@ export class AppService {
                   await fs.unlink(localFilePath, (callback) => {
                     callback ? console.log(callback) : {};
                   });
+                  await ctx.reply('Done: ' + remoteFilePath);
                 } catch (error) {
                   console.log(error);
                   try {
+                    await ctx.reply('Error: ' + remoteFilePath);
                     await fs.unlink(localFilePath, (callback) => {
                       callback ? console.log(callback) : {};
                     });
