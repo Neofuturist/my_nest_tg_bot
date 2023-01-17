@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Hears, On, Start, Update } from 'nestjs-telegraf';
+import { On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { YaDisk } from 'ya-disk-rest-api';
 import * as process from 'process';
@@ -14,7 +14,9 @@ const moment = require('moment');
 export class AppService {
   @Start()
   async startCommand(ctx: Context) {
-    await ctx.reply('Welcome');
+    await ctx.reply(
+      'Можешь прислать или переслать файл, я загружу его на Диск.',
+    );
   }
   @On('photo')
   async onPhoto(ctx: any) {
@@ -27,10 +29,6 @@ export class AppService {
   @On('document')
   async onDoc(ctx: any) {
     await this.loadFile(ctx, 'document');
-  }
-  @Hears('hi')
-  async hearsHi(ctx: Context) {
-    await ctx.reply('Hey there');
   }
   getHello(): string {
     return 'Hello World!';
