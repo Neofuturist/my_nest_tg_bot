@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Hears, Help, On, Start, Update } from 'nestjs-telegraf';
+import { Hears, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { YaDisk } from 'ya-disk-rest-api';
 import * as process from 'process';
@@ -18,12 +18,15 @@ export class AppService {
   }
   @On('photo')
   async onPhoto(ctx: any) {
-    await this.uploadPic(ctx);
+    await this.loadFile(ctx, 'photo');
   }
   @On('video')
+  async onVideo(ctx: any) {
+    await this.loadFile(ctx, 'video');
+  }
   @On('document')
   async onDoc(ctx: any) {
-    await this.uploadDocument(ctx);
+    await this.loadFile(ctx, 'document');
   }
   @Hears('hi')
   async hearsHi(ctx: Context) {
@@ -32,119 +35,60 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
-  async uploadPic(ctx: any) {
+  async loadFile(ctx: any, type: string) {
     try {
-      const photo_name =
-        ctx.message.photo[ctx.message.photo.length - 1].file_unique_id + '.jpg';
       const disk = new YaDisk(process.env.DISK_TOKEN);
-      const file_path = await this.createDir(disk, photo_name);
-      await ctx.telegram
-        .getFileLink(ctx.message.photo[ctx.message.photo.length - 1].file_id)
-        .then((url) => {
-          axios({ url, responseType: 'stream' }).then((response) => {
-            return new Promise(() => {
-              response.data
-                .pipe(fs.createWriteStream('./downloads/' + photo_name))
-                .on('finish', async () => {
-                  const filestream = await fs.createReadStream(
-                    './downloads/' + photo_name,
-                  );
-                  console.log('ok download');
-                  try {
-                    await disk.upload({
-                      path: file_path,
-                      file: filestream,
-                      overwrite: true,
-                    });
-                    await fs.unlink('./downloads/' + photo_name, (callback) => {
-                      console.log(callback ? callback : 'ok delete');
-                    });
-                  } catch (error) {
-                    console.log(error);
-                    await fs.unlink('./downloads/' + photo_name, (callback) => {
-                      console.log(callback ? callback : 'ok delete');
-                    });
-                  }
-                })
-                .on('error', () => {
-                  console.log('error download');
-                });
-            });
-          });
-        });
-    } catch (e) {
-      console.log(e);
-    }
-  }
-  async uploadDocument(ctx: any) {
-    try {
-      const type = ctx.message.video
-        ? 'video'
-        : ctx.message.document
-        ? 'document'
-        : '';
-      const disk = new YaDisk(process.env.DISK_TOKEN);
-      const fileName = ctx.message[type].file_name
-        ? ctx.message[type].file_name
-        : 'file';
-      const year = moment().format('YYYY');
-      const month = moment().format('MM');
-      try {
-        await disk.createDir('telegram');
-      } catch {}
-      try {
-        await disk.createDir('telegram/' + year);
-      } catch {}
-      try {
-        await disk.createDir('telegram/' + year + '/' + month);
-      } catch {}
-      const file_path = 'telegram/' + year + '/' + month + '/' + fileName;
-      await ctx.telegram.getFileLink(ctx.message[type].file_id).then((url) => {
+      const fileName =
+        type == 'photo'
+          ? ctx.message.photo[ctx.message.photo.length - 1].file_unique_id
+          : ctx.message[type].file_name
+          ? ctx.message[type].file_name
+          : 'file';
+      const fileIdLink =
+        type == 'photo'
+          ? ctx.message.photo[ctx.message.photo.length - 1].file_id
+          : ctx.message[type].file_id;
+      const localFilePath = './downloads/' + fileName;
+      const remoteFilePath = await this.createDir(disk, fileName);
+
+      await ctx.telegram.getFileLink(fileIdLink).then((url) => {
         axios({ url, responseType: 'stream' }).then((response) => {
           return new Promise(() => {
             response.data
-              .pipe(fs.createWriteStream('./downloads/' + fileName))
+              .pipe(fs.createWriteStream(localFilePath))
               .on('finish', async () => {
-                const filestream = await fs.createReadStream(
-                  './downloads/' + fileName,
-                );
-                console.log('ok download');
+                const filestream = await fs.createReadStream(localFilePath);
                 try {
                   await disk.upload({
-                    path: file_path,
+                    path: remoteFilePath,
                     file: filestream,
                     overwrite: true,
                   });
-                  console.log('ok upload');
-                  await fs.unlink('./downloads/' + fileName, (callback) => {
-                    console.log(callback ? callback : 'ok delete');
+                  await fs.unlink(localFilePath, (callback) => {
+                    callback ? console.log(callback) : {};
                   });
                 } catch (error) {
-                  console.log('error upload');
-                  await fs.unlink('./downloads/' + fileName, (callback) => {
-                    console.log(callback ? callback : 'ok delete');
-                  });
+                  console.log(error);
+                  try {
+                    await fs.unlink(localFilePath, (callback) => {
+                      callback ? console.log(callback) : {};
+                    });
+                  } catch {}
                 }
               })
-              .on('error', () => {
-                console.log('error download');
+              .on('error', (error) => {
+                console.log(error);
               });
           });
         });
       });
-    } catch (e) {
-      console.log(e);
+    } catch (error) {
+      console.log(error);
     }
   }
-  async createDir(
-    // tmp_dir: string,
-    disk: YaDisk,
-    file_name: string,
-  ): Promise<string> {
-    // if (!fs.existsSync(tmp_dir)) {
-    //   await fs.mkdirSync(tmp_dir);
-    // }
-    const base_dir = 'telegram_bot';
+
+  async createDir(disk: YaDisk, file_name: string): Promise<string> {
+    const base_dir = 'telegram_bot_files';
     const year = moment().format('YYYY');
     const month = moment().format('MM');
     try {
@@ -156,6 +100,22 @@ export class AppService {
     try {
       await disk.createDir(base_dir + '/' + year + '/' + month);
     } catch {}
-    return base_dir + '/' + year + '/' + month + '/' + file_name;
+
+    let flag = false;
+    let index = 2;
+    let new_name = file_name;
+    while (!flag) {
+      const checked = await disk.isFileExist(
+        base_dir + '/' + year + '/' + month + '/' + new_name,
+      );
+      if (checked) {
+        new_name = index + '_' + file_name;
+        index++;
+      } else {
+        flag = true;
+      }
+    }
+
+    return base_dir + '/' + year + '/' + month + '/' + new_name;
   }
 }
