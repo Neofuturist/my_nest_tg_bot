@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^9.0.0",
     "axios": "^1.2.2",
     "https": "^1.0.0",
+    "moment": "^2.29.4",
     "nestjs-telegraf": "^2.6.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
