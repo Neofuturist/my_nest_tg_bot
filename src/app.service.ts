@@ -16,14 +16,6 @@ export class AppService {
   async startCommand(ctx: Context) {
     await ctx.reply('Welcome');
   }
-  @Help()
-  async helpCommand(ctx: Context) {
-    await ctx.reply('Send me a sticker');
-  }
-  @On('sticker')
-  async onSticker(ctx: Context) {
-    await ctx.reply('👍');
-  }
   @On('photo')
   async onPhoto(ctx: any) {
     await this.uploadPic(ctx);
