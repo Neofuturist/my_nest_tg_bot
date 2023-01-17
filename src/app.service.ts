@@ -37,18 +37,7 @@ export class AppService {
       const photo_name =
         ctx.message.photo[ctx.message.photo.length - 1].file_unique_id + '.jpg';
       const disk = new YaDisk(process.env.DISK_TOKEN);
-      const year = moment().format('YYYY');
-      const month = moment().format('MM');
-      try {
-        await disk.createDir('telegram');
-      } catch {}
-      try {
-        await disk.createDir('telegram/' + year);
-      } catch {}
-      try {
-        await disk.createDir('telegram/' + year + '/' + month);
-      } catch {}
-      const file_path = 'telegram/' + year + '/' + month + '/' + photo_name;
+      const file_path = await this.createDir(disk, photo_name);
       await ctx.telegram
         .getFileLink(ctx.message.photo[ctx.message.photo.length - 1].file_id)
         .then((url) => {
@@ -146,5 +135,27 @@ export class AppService {
     } catch (e) {
       console.log(e);
     }
+  }
+  async createDir(
+    // tmp_dir: string,
+    disk: YaDisk,
+    file_name: string,
+  ): Promise<string> {
+    // if (!fs.existsSync(tmp_dir)) {
+    //   await fs.mkdirSync(tmp_dir);
+    // }
+    const base_dir = 'telegram_bot';
+    const year = moment().format('YYYY');
+    const month = moment().format('MM');
+    try {
+      await disk.createDir(base_dir);
+    } catch {}
+    try {
+      await disk.createDir(base_dir + '/' + year);
+    } catch {}
+    try {
+      await disk.createDir(base_dir + '/' + year + '/' + month);
+    } catch {}
+    return base_dir + '/' + year + '/' + month + '/' + file_name;
   }
 }
